@@ -170,9 +170,9 @@
 
     // ===== Chart.js load =====
     const script = document.createElement("script");
-    // script.src = "/Chart.min.js";
-    // script.onload = initChart;
-    // document.head.appendChild(script);
+    script.src = "https://cdn.jsdelivr.net/npm/chart.js";
+    script.onload = initChart;
+    document.head.appendChild(script);
 
     function initChart() {
         const ctx = document.getElementById('monitor-chart').getContext('2d');
