@@ -1,17 +1,17 @@
 (function () {
+    // ===== CSS =====
     const style = document.createElement("style");
     style.textContent = `
         .monitor-container {
             position: fixed;
             top: 100px;
             left: 100px;
-            background: rgba(17,17,17,0.8); /* nền đen trong suốt */
+            background: rgba(17,17,17,0.8); /* nền trong suốt */
             color: white;
             border-radius: 10px;
             box-shadow: 0 0 15px rgba(0,0,0,0.5);
             z-index: 99999;
-            min-width: 300px;
-            min-height: 200px;
+            min-width: 400px;
             display: flex;
             flex-direction: column;
             overflow: hidden;
@@ -19,7 +19,7 @@
         .monitor-header {
             cursor: grab;
             padding: 5px 10px;
-            background: rgba(34,34,34,0.85); /* header đậm hơn một chút */
+            background: rgba(34,34,34,0.85);
             font-weight: bold;
             display: flex;
             justify-content: space-between;
@@ -27,9 +27,7 @@
             user-select: none;
             flex-shrink: 0;
         }
-        .monitor-header:active {
-            cursor: grabbing;
-        }
+        .monitor-header:active { cursor: grabbing; }
         .monitor-header button {
             background: rgba(68,68,68,0.85);
             border: none;
@@ -44,29 +42,52 @@
             padding: 5px;
             flex-grow: 1;
         }
+        .monitor-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            font-size: 12px;
+        }
+        .monitor-table th, .monitor-table td {
+            border: 1px solid rgba(255,255,255,0.2);
+            padding: 3px 5px;
+            text-align: right;
+        }
+        .monitor-table th { background: rgba(255,255,255,0.1); }
     `;
     document.head.appendChild(style);
 
+    // ===== HTML =====
     const container = document.createElement("div");
     container.className = "monitor-container";
     container.innerHTML = `
         <div class="monitor-header">
-            <span>FSS-Monitor</span>
+            <span>Monitor (Gom chung)</span>
             <div>
                 <button id="monitor-mode">Mode</button>
                 <button id="monitor-close">×</button>
             </div>
         </div>
         <div class="monitor-body">
-            <canvas id="monitor-chart" style="width:100%; height:300px;"></canvas>
+            <canvas id="monitor-chart" style="width:100%; height:200px;"></canvas>
+            <table class="monitor-table">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>CPU %</th>
+                        <th>RAM MB</th>
+                        <th>Net KB/s</th>
+                    </tr>
+                </thead>
+                <tbody id="monitor-tbody"></tbody>
+            </table>
         </div>
     `;
     document.body.appendChild(container);
 
-    // Drag chỉ ở header
+    // ===== Drag chỉ ở header =====
     (function makeDraggable(el, handle) {
         let offsetX = 0, offsetY = 0, isDown = false;
-
         handle.addEventListener('mousedown', function (e) {
             if (e.target.tagName === "BUTTON") return;
             isDown = true;
@@ -76,13 +97,11 @@
             document.addEventListener('mouseup', mouseUp);
             e.preventDefault();
         });
-
         function mouseMove(e) {
             if (!isDown) return;
             el.style.left = `${e.clientX - offsetX}px`;
             el.style.top = `${e.clientY - offsetY}px`;
         }
-
         function mouseUp() {
             isDown = false;
             document.removeEventListener('mousemove', mouseMove);
@@ -90,17 +109,34 @@
         }
     })(container, container.querySelector(".monitor-header"));
 
-    // Close
-    container.querySelector("#monitor-close").addEventListener("click", () => {
-        container.remove();
-    });
+    // ===== Close & Mode =====
+    container.querySelector("#monitor-close").addEventListener("click", () => container.remove());
+    container.querySelector("#monitor-mode").addEventListener("click", () => alert("Switch mode chưa implement"));
 
-    // Mode switch
-    container.querySelector("#monitor-mode").addEventListener("click", () => {
-        alert("Switch mode chưa implement");
-    });
+    // ===== Core functions =====
+    let prevNetBytes = 0;
+    let lastTime = performance.now();
+    function getNetworkKBps() {
+        const entries = performance.getEntriesByType('resource');
+        let totalBytes = entries.reduce((sum, e) => sum + (e.transferSize || 0), 0);
+        let kbps = (totalBytes - prevNetBytes) / 1024;
+        prevNetBytes = totalBytes;
+        return parseFloat(kbps.toFixed(2));
+    }
+    function getRAMMB() {
+        if (performance.memory) {
+            return parseFloat((performance.memory.usedJSHeapSize / 1048576).toFixed(2));
+        }
+        return 0;
+    }
+    function getCPUPercent() {
+        let now = performance.now();
+        let diff = now - lastTime;
+        lastTime = now;
+        return parseFloat((Math.random() * 30 + 10).toFixed(2)); // giả lập CPU
+    }
 
-    // Chart.js
+    // ===== Chart.js load =====
     const script = document.createElement("script");
     script.src = "https://cdn.jsdelivr.net/npm/chart.js";
     script.onload = initChart;
@@ -134,17 +170,30 @@
             }
         });
 
+        const tbody = document.getElementById("monitor-tbody");
+
         setInterval(() => {
             const now = new Date().toLocaleTimeString();
+            const cpu = getCPUPercent();
+            const ram = getRAMMB();
+            const net = getNetworkKBps();
+
+            // Chart update
             if (data.labels.length > 20) {
                 data.labels.shift();
                 data.datasets.forEach(ds => ds.data.shift());
             }
             data.labels.push(now);
-            data.datasets[0].data.push(window.MonitorCore.getCPUPercent());
-            data.datasets[1].data.push(window.MonitorCore.getRAMMB());
-            data.datasets[2].data.push(window.MonitorCore.getNetworkKBps());
+            data.datasets[0].data.push(cpu);
+            data.datasets[1].data.push(ram);
+            data.datasets[2].data.push(net);
             chart.update();
+
+            // Table update
+            const row = document.createElement("tr");
+            row.innerHTML = `<td>${now}</td><td>${cpu}</td><td>${ram}</td><td>${net}</td>`;
+            tbody.appendChild(row);
+            if (tbody.rows.length > 20) tbody.deleteRow(0);
         }, 1000);
     }
 })();
