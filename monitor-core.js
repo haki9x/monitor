@@ -23,7 +23,7 @@ window.MonitorCore = (function() {
     // Ví dụ: khi trình duyệt không làm gì, vòng lặp này mất 2ms để chạy.
     const IDLE_TIME_MS = 2; 
     
-    function getCPUCorrelation() {
+    function getCPUPercent() {
         let startTime = performance.now();
         let numIterations = 100000000; // Số lần lặp để tạo tác vụ nặng
     
