@@ -51,7 +51,7 @@
     container.className = "monitor-container";
     container.innerHTML = `
         <div class="monitor-header">
-            <span>Monitor (Gom chung)</span>
+            <span>FSS-Monitor</span>
             <div>
                 <button id="monitor-mode">Mode</button>
                 <button id="monitor-close">×</button>
