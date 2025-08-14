@@ -18,14 +18,33 @@ window.MonitorCore = (function() {
         return 0;
     }
 
+    // Các biến này cần được khai báo ở phạm vi ngoài hàm, 
+    // ví dụ: ở đầu file monitor-core.js hoặc monitor-ui.js
+    let lastTime = performance.now();
+    let time = 0;
+    let baseValue = 25; // Giá trị CPU cơ bản khi nhàn rỗi
+    let amplitude = 15; // Biên độ dao động
+    
     function getCPUPercent() {
         let now = performance.now();
-        let diff = now - lastTime;
+        let deltaTime = (now - lastTime) / 1000; // Thời gian đã trôi qua (đơn vị: giây)
         lastTime = now;
-        // Giả lập CPU load, muốn chính xác phải dùng API ngoài trình duyệt
-        return parseFloat((Math.random() * 30 + 10).toFixed(2));
+    
+        // Tăng biến 'time' để tạo hiệu ứng dao động
+        time += deltaTime;
+    
+        // Dùng hàm sin để tạo một giá trị dao động mượt mà
+        // Cộng thêm một chút ngẫu nhiên để trông tự nhiên hơn
+        let simulatedValue = baseValue + amplitude * Math.sin(time / 2) + Math.random() * 5;
+    
+        // Giả lập thỉnh thoảng có spike (tăng đột biến)
+        if (Math.random() < 0.05) { // 5% khả năng xảy ra spike
+            simulatedValue += Math.random() * 40;
+        }
+    
+        // Đảm bảo giá trị không vượt quá 100 và không âm
+        return parseFloat(Math.min(100, Math.max(0, simulatedValue)).toFixed(2));
     }
-
     return {
         getCPUPercent,
         getRAMMB,
