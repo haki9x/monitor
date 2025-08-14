@@ -5,7 +5,7 @@
             position: fixed;
             top: 100px;
             left: 100px;
-            background: #111;
+            background: rgba(17,17,17,0.8); /* nền đen trong suốt */
             color: white;
             border-radius: 10px;
             box-shadow: 0 0 15px rgba(0,0,0,0.5);
@@ -19,7 +19,7 @@
         .monitor-header {
             cursor: grab;
             padding: 5px 10px;
-            background: #222;
+            background: rgba(34,34,34,0.85); /* header đậm hơn một chút */
             font-weight: bold;
             display: flex;
             justify-content: space-between;
@@ -31,7 +31,7 @@
             cursor: grabbing;
         }
         .monitor-header button {
-            background: #444;
+            background: rgba(68,68,68,0.85);
             border: none;
             color: white;
             padding: 2px 6px;
@@ -68,13 +68,13 @@
         let offsetX = 0, offsetY = 0, isDown = false;
 
         handle.addEventListener('mousedown', function (e) {
-            if (e.target.tagName === "BUTTON") return; // tránh drag khi bấm nút
+            if (e.target.tagName === "BUTTON") return;
             isDown = true;
             offsetX = e.clientX - el.offsetLeft;
             offsetY = e.clientY - el.offsetTop;
             document.addEventListener('mousemove', mouseMove);
             document.addEventListener('mouseup', mouseUp);
-            e.preventDefault(); // chặn resize khi drag
+            e.preventDefault();
         });
 
         function mouseMove(e) {
@@ -134,7 +134,6 @@
             }
         });
 
-        // Lấy dữ liệu từ MonitorCore
         setInterval(() => {
             const now = new Date().toLocaleTimeString();
             if (data.labels.length > 20) {
