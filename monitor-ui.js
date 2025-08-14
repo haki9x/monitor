@@ -143,11 +143,31 @@
         }
         return 0;
     }
+    // Biến lưu trữ giá trị tham chiếu khi CPU nhàn rỗi.
+    // Bạn có thể cần điều chỉnh giá trị này bằng cách chạy thử nghiệm.
+    // Ví dụ: khi trình duyệt không làm gì, vòng lặp này mất 2ms để chạy.
+    const IDLE_TIME_MS = 2; 
+    
     function getCPUPercent() {
-        let now = performance.now();
-        let diff = now - lastTime;
-        lastTime = now;
-        return parseFloat((Math.random() * 30 + 10).toFixed(2)); // giả lập CPU
+        let startTime = performance.now();
+        let numIterations = 100000000; // Số lần lặp để tạo tác vụ nặng
+    
+        // Chạy một vòng lặp nặng để tiêu tốn CPU
+        let dummy = 0;
+        for (let i = 0; i < numIterations; i++) {
+            dummy += Math.sqrt(i);
+        }
+        
+        let endTime = performance.now();
+        let totalTime = endTime - startTime;
+    
+        // Tính toán chỉ số "tương quan CPU"
+        // Giá trị này càng cao, nghĩa là luồng chính càng bận.
+        // Chúng ta chuẩn hóa nó thành một giá trị từ 0 đến 100.
+        let cpuCorrelatedValue = (totalTime / IDLE_TIME_MS) * 100;
+        
+        // Giới hạn giá trị trong khoảng 0-100 để trông giống phần trăm
+        return parseFloat(Math.min(100, cpuCorrelatedValue).toFixed(2));
     }
 
     // ===== Stats storage =====
