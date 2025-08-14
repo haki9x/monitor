@@ -14,9 +14,10 @@
             min-height: 200px;
             display: flex;
             flex-direction: column;
+            overflow: hidden;
         }
         .monitor-header {
-            cursor: move;
+            cursor: grab;
             padding: 5px 10px;
             background: #222;
             font-weight: bold;
@@ -25,6 +26,9 @@
             align-items: center;
             user-select: none;
             flex-shrink: 0;
+        }
+        .monitor-header:active {
+            cursor: grabbing;
         }
         .monitor-header button {
             background: #444;
@@ -59,7 +63,7 @@
     `;
     document.body.appendChild(container);
 
-    // Chỉ drag khi bấm vào header
+    // Drag chỉ ở header
     (function makeDraggable(el, handle) {
         let offsetX = 0, offsetY = 0, isDown = false;
 
@@ -70,6 +74,7 @@
             offsetY = e.clientY - el.offsetTop;
             document.addEventListener('mousemove', mouseMove);
             document.addEventListener('mouseup', mouseUp);
+            e.preventDefault(); // chặn resize khi drag
         });
 
         function mouseMove(e) {
@@ -129,7 +134,7 @@
             }
         });
 
-        // Giả lập data
+        // Lấy dữ liệu từ MonitorCore
         setInterval(() => {
             const now = new Date().toLocaleTimeString();
             if (data.labels.length > 20) {
@@ -137,9 +142,9 @@
                 data.datasets.forEach(ds => ds.data.shift());
             }
             data.labels.push(now);
-            data.datasets[0].data.push(Math.random() * 50);
-            data.datasets[1].data.push(50 + Math.random() * 30);
-            data.datasets[2].data.push(Math.random());
+            data.datasets[0].data.push(window.MonitorCore.getCPUPercent());
+            data.datasets[1].data.push(window.MonitorCore.getRAMMB());
+            data.datasets[2].data.push(window.MonitorCore.getNetworkKBps());
             chart.update();
         }, 1000);
     }
