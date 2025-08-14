@@ -18,33 +18,39 @@ window.MonitorCore = (function() {
         return 0;
     }
 
-    // Các biến này cần được khai báo ở phạm vi ngoài hàm, 
-    // ví dụ: ở đầu file monitor-core.js hoặc monitor-ui.js
-    let lastTime = performance.now();
-    let time = 0;
-    let baseValue = 25; // Giá trị CPU cơ bản khi nhàn rỗi
-    let amplitude = 15; // Biên độ dao động
+    // Biến lưu trữ giá trị tham chiếu khi CPU nhàn rỗi.
+    // Bạn có thể cần điều chỉnh giá trị này bằng cách chạy thử nghiệm.
+    // Ví dụ: khi trình duyệt không làm gì, vòng lặp này mất 2ms để chạy.
+    const IDLE_TIME_MS = 2; 
     
-    function getCPUPercent() {
-        let now = performance.now();
-        let deltaTime = (now - lastTime) / 1000; // Thời gian đã trôi qua (đơn vị: giây)
-        lastTime = now;
+    function getCPUCorrelation() {
+        let startTime = performance.now();
+        let numIterations = 100000000; // Số lần lặp để tạo tác vụ nặng
     
-        // Tăng biến 'time' để tạo hiệu ứng dao động
-        time += deltaTime;
-    
-        // Dùng hàm sin để tạo một giá trị dao động mượt mà
-        // Cộng thêm một chút ngẫu nhiên để trông tự nhiên hơn
-        let simulatedValue = baseValue + amplitude * Math.sin(time / 2) + Math.random() * 5;
-    
-        // Giả lập thỉnh thoảng có spike (tăng đột biến)
-        if (Math.random() < 0.05) { // 5% khả năng xảy ra spike
-            simulatedValue += Math.random() * 40;
+        // Chạy một vòng lặp nặng để tiêu tốn CPU
+        let dummy = 0;
+        for (let i = 0; i < numIterations; i++) {
+            dummy += Math.sqrt(i);
         }
+        
+        let endTime = performance.now();
+        let totalTime = endTime - startTime;
     
-        // Đảm bảo giá trị không vượt quá 100 và không âm
-        return parseFloat(Math.min(100, Math.max(0, simulatedValue)).toFixed(2));
+        // Tính toán chỉ số "tương quan CPU"
+        // Giá trị này càng cao, nghĩa là luồng chính càng bận.
+        // Chúng ta chuẩn hóa nó thành một giá trị từ 0 đến 100.
+        let cpuCorrelatedValue = (totalTime / IDLE_TIME_MS) * 100;
+        
+        // Giới hạn giá trị trong khoảng 0-100 để trông giống phần trăm
+        return parseFloat(Math.min(100, cpuCorrelatedValue).toFixed(2));
     }
+    
+    // Ví dụ về cách sử dụng:
+    // setInterval(() => {
+    //     const cpu = getCPUCorrelation();
+    //     console.log(`CPU Correlated Value: ${cpu}%`);
+    //     // Cập nhật giá trị 'cpu' này vào biểu đồ
+    // }, 1000);
     return {
         getCPUPercent,
         getRAMMB,
