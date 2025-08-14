@@ -1,25 +1,4 @@
 (function () {
-    // Ngăn script chạy nhiều lần
-    if (document.getElementById("fss-monitor-container")) {
-        return;
-    }
-
-    // ===== Khai báo biến toàn cục =====
-    let stats = {
-        cpu: [],
-        ram: [],
-        net: []
-    };
-    let prevNetBytes = 0;
-    let lastTime = performance.now();
-    let chart;
-    const MAX_DATA_POINTS = 60; // Số lượng điểm dữ liệu tối đa
-
-    // Biến lưu trữ giá trị tham chiếu khi CPU nhàn rỗi
-    // Cần hiệu chỉnh lại giá trị này (đơn vị: ms)
-    const IDLE_TIME_MS = 2;
-    const NUM_ITERATIONS = 100000000;
-
     // ===== CSS =====
     const style = document.createElement("style");
     style.textContent = `
@@ -36,8 +15,6 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            font-family: sans-serif;
-            font-size: 14px;
         }
         .monitor-header {
             cursor: grab;
@@ -86,7 +63,6 @@
 
     // ===== HTML =====
     const container = document.createElement("div");
-    container.id = "fss-monitor-container";
     container.className = "monitor-container";
     container.innerHTML = `
         <div class="monitor-header">
@@ -148,22 +124,12 @@
         stats.cpu = [];
         stats.ram = [];
         stats.net = [];
-        // Cập nhật lại UI về 0
-        const metrics = ['cpu', 'ram', 'net'];
-        metrics.forEach(m => {
-            document.getElementById(`${m}-cur`).textContent = 0;
-            document.getElementById(`${m}-max`).textContent = 0;
-            document.getElementById(`${m}-min`).textContent = 0;
-            document.getElementById(`${m}-avg`).textContent = 0;
-        });
-        // Cập nhật lại biểu đồ
-        chart.data.labels = [];
-        chart.data.datasets.forEach(ds => ds.data = []);
-        chart.update();
     };
     container.querySelector("#monitor-reset").addEventListener("click", resetStats);
 
     // ===== Core functions =====
+    let prevNetBytes = 0;
+    let lastTime = performance.now();
     function getNetworkKBps() {
         const entries = performance.getEntriesByType('resource');
         let totalBytes = entries.reduce((sum, e) => sum + (e.transferSize || 0), 0);
@@ -171,52 +137,63 @@
         prevNetBytes = totalBytes;
         return parseFloat(kbps.toFixed(2));
     }
-
     function getRAMMB() {
-        // performance.memory không có sẵn trên mọi trình duyệt
         if (performance.memory) {
             return parseFloat((performance.memory.usedJSHeapSize / 1048576).toFixed(2));
         }
         return 0;
     }
+    // Biến lưu trữ giá trị tham chiếu khi CPU nhàn rỗi.
+    // Bạn có thể cần điều chỉnh giá trị này bằng cách chạy thử nghiệm.
+    // Ví dụ: khi trình duyệt không làm gì, vòng lặp này mất 2ms để chạy.
+    const IDLE_TIME_MS = 2; 
     
-    // Hàm lấy chỉ số tương quan CPU
-    function getCPUCorrelation() {
+    function getCPUPercent() {
         let startTime = performance.now();
+        let numIterations = 100000000; // Số lần lặp để tạo tác vụ nặng
+    
+        // Chạy một vòng lặp nặng để tiêu tốn CPU
         let dummy = 0;
-        for (let i = 0; i < NUM_ITERATIONS; i++) {
+        for (let i = 0; i < numIterations; i++) {
             dummy += Math.sqrt(i);
         }
         
         let endTime = performance.now();
         let totalTime = endTime - startTime;
+    
+        // Tính toán chỉ số "tương quan CPU"
+        // Giá trị này càng cao, nghĩa là luồng chính càng bận.
+        // Chúng ta chuẩn hóa nó thành một giá trị từ 0 đến 100.
         let cpuCorrelatedValue = (totalTime / IDLE_TIME_MS) * 100;
         
-        return parseFloat(Math.min(100, Math.max(0, cpuCorrelatedValue)).toFixed(2));
+        // Giới hạn giá trị trong khoảng 0-100 để trông giống phần trăm
+        return parseFloat(Math.min(100, cpuCorrelatedValue).toFixed(2));
     }
 
-    // ===== Stats storage & UI update =====
+    // ===== Stats storage =====
+    const stats = {
+        cpu: [],
+        ram: [],
+        net: []
+    };
     function updateStats(metric, value) {
+        stats[metric].push(value);
         const arr = stats[metric];
-        arr.push(value);
-        
-        if (arr.length > MAX_DATA_POINTS) {
-            arr.shift();
-        }
-
-        if (arr.length > 0) {
-            const max = Math.max(...arr);
-            const min = Math.min(...arr);
-            const avg = (arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(2);
-            
-            document.getElementById(`${metric}-cur`).textContent = value;
-            document.getElementById(`${metric}-max`).textContent = max;
-            document.getElementById(`${metric}-min`).textContent = min;
-            document.getElementById(`${metric}-avg`).textContent = avg;
-        }
+        const max = Math.max(...arr);
+        const min = Math.min(...arr);
+        const avg = (arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(2);
+        document.getElementById(`${metric}-cur`).textContent = value;
+        document.getElementById(`${metric}-max`).textContent = max;
+        document.getElementById(`${metric}-min`).textContent = min;
+        document.getElementById(`${metric}-avg`).textContent = avg;
     }
 
-    // ===== Main loop =====
+    // ===== Chart.js load =====
+    const script = document.createElement("script");
+    script.src = "https://cdn.jsdelivr.net/npm/chart.js";
+    script.onload = initChart;
+    document.head.appendChild(script);
+
     function initChart() {
         const ctx = document.getElementById('monitor-chart').getContext('2d');
         const data = {
@@ -228,7 +205,7 @@
             ]
         };
 
-        chart = new Chart(ctx, {
+        const chart = new Chart(ctx, {
             type: 'line',
             data,
             options: {
@@ -245,14 +222,15 @@
             }
         });
 
+        // ===== Update loop =====
         setInterval(() => {
             const now = new Date().toLocaleTimeString();
-            const cpu = getCPUCorrelation();
+            const cpu = getCPUPercent();
             const ram = getRAMMB();
             const net = getNetworkKBps();
 
-            // Chart history
-            if (data.labels.length > MAX_DATA_POINTS) {
+            // Chart history 60 điểm
+            if (data.labels.length > 60) {
                 data.labels.shift();
                 data.datasets.forEach(ds => ds.data.shift());
             }
@@ -268,16 +246,7 @@
             updateStats("net", net);
         }, 1000);
 
+        // ===== Auto reset stats mỗi 1 giờ =====
         setInterval(resetStats, 3600 * 1000);
     }
-
-    // Kiểm tra và khởi tạo chart sau khi Chart.js được tải
-    function checkAndInit() {
-        if (typeof Chart !== 'undefined') {
-            initChart();
-        } else {
-            setTimeout(checkAndInit, 100);
-        }
-    }
-    checkAndInit();
 })();
