@@ -6,12 +6,12 @@
             position: fixed;
             top: 100px;
             left: 100px;
-            background: rgba(17,17,17,0.8); /* nền trong suốt */
+            background: rgba(17,17,17,0.8);
             color: white;
             border-radius: 10px;
             box-shadow: 0 0 15px rgba(0,0,0,0.5);
             z-index: 99999;
-            min-width: 400px;
+            min-width: 450px;
             display: flex;
             flex-direction: column;
             overflow: hidden;
@@ -42,18 +42,21 @@
             padding: 5px;
             flex-grow: 1;
         }
-        .monitor-table {
+        .monitor-summary {
             width: 100%;
             border-collapse: collapse;
             margin-top: 10px;
             font-size: 12px;
         }
-        .monitor-table th, .monitor-table td {
+        .monitor-summary th, .monitor-summary td {
             border: 1px solid rgba(255,255,255,0.2);
             padding: 3px 5px;
             text-align: right;
         }
-        .monitor-table th { background: rgba(255,255,255,0.1); }
+        .monitor-summary th {
+            background: rgba(255,255,255,0.1);
+            text-align: center;
+        }
     `;
     document.head.appendChild(style);
 
@@ -62,7 +65,7 @@
     container.className = "monitor-container";
     container.innerHTML = `
         <div class="monitor-header">
-            <span>Monitor (Gom chung)</span>
+            <span>Monitor (Summary)</span>
             <div>
                 <button id="monitor-mode">Mode</button>
                 <button id="monitor-close">×</button>
@@ -70,16 +73,21 @@
         </div>
         <div class="monitor-body">
             <canvas id="monitor-chart" style="width:100%; height:200px;"></canvas>
-            <table class="monitor-table">
+            <table class="monitor-summary">
                 <thead>
                     <tr>
-                        <th>Time</th>
-                        <th>CPU %</th>
-                        <th>RAM MB</th>
-                        <th>Net KB/s</th>
+                        <th>Metric</th>
+                        <th>Current</th>
+                        <th>Max</th>
+                        <th>Min</th>
+                        <th>Avg</th>
                     </tr>
                 </thead>
-                <tbody id="monitor-tbody"></tbody>
+                <tbody>
+                    <tr><td>CPU %</td><td id="cpu-cur">0</td><td id="cpu-max">0</td><td id="cpu-min">0</td><td id="cpu-avg">0</td></tr>
+                    <tr><td>RAM MB</td><td id="ram-cur">0</td><td id="ram-max">0</td><td id="ram-min">0</td><td id="ram-avg">0</td></tr>
+                    <tr><td>Net KB/s</td><td id="net-cur">0</td><td id="net-max">0</td><td id="net-min">0</td><td id="net-avg">0</td></tr>
+                </tbody>
             </table>
         </div>
     `;
@@ -136,6 +144,24 @@
         return parseFloat((Math.random() * 30 + 10).toFixed(2)); // giả lập CPU
     }
 
+    // ===== Stats storage =====
+    const stats = {
+        cpu: [],
+        ram: [],
+        net: []
+    };
+    function updateStats(metric, value) {
+        stats[metric].push(value);
+        const arr = stats[metric];
+        const max = Math.max(...arr);
+        const min = Math.min(...arr);
+        const avg = (arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(2);
+        document.getElementById(`${metric}-cur`).textContent = value;
+        document.getElementById(`${metric}-max`).textContent = max;
+        document.getElementById(`${metric}-min`).textContent = min;
+        document.getElementById(`${metric}-avg`).textContent = avg;
+    }
+
     // ===== Chart.js load =====
     const script = document.createElement("script");
     script.src = "https://cdn.jsdelivr.net/npm/chart.js";
@@ -170,15 +196,13 @@
             }
         });
 
-        const tbody = document.getElementById("monitor-tbody");
-
         setInterval(() => {
             const now = new Date().toLocaleTimeString();
             const cpu = getCPUPercent();
             const ram = getRAMMB();
             const net = getNetworkKBps();
 
-            // Chart update
+            // Cập nhật chart
             if (data.labels.length > 20) {
                 data.labels.shift();
                 data.datasets.forEach(ds => ds.data.shift());
@@ -189,11 +213,10 @@
             data.datasets[2].data.push(net);
             chart.update();
 
-            // Table update
-            const row = document.createElement("tr");
-            row.innerHTML = `<td>${now}</td><td>${cpu}</td><td>${ram}</td><td>${net}</td>`;
-            tbody.appendChild(row);
-            if (tbody.rows.length > 20) tbody.deleteRow(0);
+            // Cập nhật summary
+            updateStats("cpu", cpu);
+            updateStats("ram", ram);
+            updateStats("net", net);
         }, 1000);
     }
 })();
