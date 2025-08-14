@@ -1,26 +1,26 @@
-(function(){
-    if (!performance.memory) {
-        console.warn("performance.memory không khả dụng trong tab này (có thể do Guest/Incognito hoặc chưa bật flag).");
+(async () => {
+    // Thay URL GitHub RAW của bạn
+    const uiUrl = 'https://raw.githubusercontent.com/haki9x/monitor/main/monitor-ui.js';
+    const coreUrl = 'https://raw.githubusercontent.com/haki9x/monitor/main/monitor-core.js';
+
+    try {
+        const [uiCode, coreCode] = await Promise.all([
+            fetch(uiUrl).then(res => res.text()),
+            fetch(coreUrl).then(res => res.text())
+        ]);
+
+        // Inject Core trước
+        const coreScript = document.createElement('script');
+        coreScript.textContent = coreCode;
+        document.documentElement.appendChild(coreScript);
+
+        // Inject UI
+        const uiScript = document.createElement('script');
+        uiScript.textContent = uiCode;
+        document.documentElement.appendChild(uiScript);
+
+        console.log("✅ Monitor loaded from GitHub");
+    } catch (err) {
+        console.error("❌ Load monitor failed", err);
     }
-
-    let lastTime = performance.now();
-    let frameCount = 0;
-
-    function measureFPS(time) {
-        frameCount++;
-        if (time - lastTime >= 1000) {
-            const fps = frameCount;
-            frameCount = 0;
-            lastTime = time;
-
-            let ramInfo = '';
-            if (performance.memory) {
-                ramInfo = ` | RAM: ${(performance.memory.usedJSHeapSize / 1048576).toFixed(2)} MB / ${(performance.memory.jsHeapSizeLimit / 1048576).toFixed(2)} MB`;
-            }
-            console.log(`[${new Date().toLocaleTimeString()}] FPS: ${fps}${ramInfo}`);
-        }
-        requestAnimationFrame(measureFPS);
-    }
-
-    measureFPS();
 })();
