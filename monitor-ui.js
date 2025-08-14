@@ -66,7 +66,7 @@
     container.className = "monitor-container";
     container.innerHTML = `
         <div class="monitor-header">
-            <span>Monitor (Summary)</span>
+            <span>FSS Monitor</span>
             <div>
                 <button id="monitor-reset">Reset</button>
                 <button id="monitor-close">×</button>
